@@ -119,3 +119,4 @@ h3 small { font-weight: 400; color: var(--muted); font-size: 11px; }
 .facts tr.driver td:first-child { box-shadow: inset 3px 0 var(--accent); }
 .facts .fid { color: var(--muted); font-family: ui-monospace, monospace; font-size: 11px; }
 details pre { font-size: 11px; background: #060a14; padding: 10px; border-radius: 8px; overflow: auto; max-height: 360px; }
+.vtt { float: right; font-size: 12px; font-weight: 500; color: var(--accent); text-decoration: none; border: 1px solid var(--accent); border-radius: 6px; padding: 2px 8px; }

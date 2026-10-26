@@ -104,6 +104,23 @@ The simulator models four things:
 
 **Story seeds** script the goals and the card so there is always a story to explain. Everything between them is sampled from a seeded RNG.
 
+## Standards and responsible AI
+
+How PitchPulse lines up with the standards and rules that apply to broadcast graphics, football data and AI-generated content.
+
+| Area | Standard or rule | What PitchPulse does |
+| --- | --- | --- |
+| Timing | SMPTE ST 12 timecode; SCTE-35/104 insertion markers | Every cue is timed on the match clock (`clock_in_ms`, `duration_ms`), so a playout system can map it to timecode or trigger it from a marker |
+| Timed text | W3C WebVTT (also TTML/IMSC, CEA-608/708) | `GET /api/captions.vtt?mode=&lang=&club=&player_id=` exports a viewer's cues as WebVTT for any HTML5 or streaming player. There's also a download button in Studio view. |
+| Football data | No universal event standard (vendor formats; open tools such as kloppy and SPADL); FIFA EPTS for tracking quality; IFAB Laws of the Game for event definitions | Fully synthetic data with fictional clubs and players. The event schema follows common vendor fields (type, team, player, x/y in metres, outcome, qualifiers) so it can be mapped onto real feeds. |
+| AI transparency | EU AI Act transparency obligations for AI-generated content | Model-written captions carry `source: "model"` and an **AI** badge on screen; template captions are labelled `template` |
+| Responsible AI | Microsoft Responsible AI Standard; Azure AI Content Safety | The model only explains facts computed in code, and a validator rejects any caption whose numbers can't be traced to a fact. Content Safety screening is part of the production design. |
+| Privacy | GDPR / UK GDPR | No personal data is stored. A fan profile (mode, club, player, language) is held in memory for the live connection only and is never saved. |
+| Gambling | Gambling advertising rules (e.g. UK) | Win probability is shown as match context only, with no odds, prices or betting prompts |
+| Accessibility and language | WCAG 2.2; Unicode bidirectional text (UAX #9); BCP 47 language tags | Arabic renders right to left, language codes are BCP 47 (`en`, `es`, `ar`), and captions are also available as WebVTT |
+
+These references are a starting point. Check the current text of each standard before relying on it.
+
 ## Known limits
 
 - Player dots are placed from formation slots shifted toward the ball. They are not full tracking data.

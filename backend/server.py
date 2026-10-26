@@ -9,7 +9,7 @@ from pathlib import Path
 
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, PlainTextResponse
 from fastapi.staticfiles import StaticFiles
 
 from pitchpulse.engine import MIN, MatchEngine
@@ -18,6 +18,7 @@ from pitchpulse.narrate import ModelNarrator, recap_facts, render_recap
 from pitchpulse.personalize import Profile, build_cue, player_card_cue, relevance
 from pitchpulse.roster import MATCH_META, TEAMS
 from pitchpulse.simulator import HALF_MS, generate_match
+from pitchpulse.webvtt import to_webvtt
 
 EVENTS = generate_match(seed=7)
 narrator = ModelNarrator()
@@ -65,6 +66,15 @@ async def recap(lang: str = "en"):
     out = render_recap(facts, lang)
     model = await narrator.recap({"facts": facts}, lang)
     return {**out, "model_text": model, "facts": facts}
+
+
+@app.get("/api/captions.vtt", response_class=PlainTextResponse)
+def captions(mode: str = "casual", lang: str = "en", club: str = "", player_id: str = ""):
+    """The match's cues for one viewer profile as WebVTT."""
+    profile = Profile()
+    profile.update(mode=mode, lang=lang, club=club, player=player_id)
+    return PlainTextResponse(to_webvtt(FULL.moments, profile), media_type="text/vtt; charset=utf-8",
+                             headers={"Content-Disposition": f'inline; filename="pitchpulse-{mode}-{lang}.vtt"'})
 
 
 @app.get("/api/moments")

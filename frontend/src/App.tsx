@@ -116,7 +116,7 @@ export default function App() {
           </aside>
         </main>
       ) : (
-        <Studio meta={meta} cues={feed.cues} lang={profile.lang} />
+        <Studio meta={meta} cues={feed.cues} lang={profile.lang} profile={profile} />
       )}
 
       {shownRecap && (
