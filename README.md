@@ -1,5 +1,7 @@
 # PitchPulse: Synthetic Match Insights Engine
 
+[![CI](https://github.com/ranjitha-rao/PitchPulse/actions/workflows/ci.yml/badge.svg)](https://github.com/ranjitha-rao/PitchPulse/actions/workflows/ci.yml)
+
 PitchPulse turns a stream of synthetic football events into explained, timed, personalized match intelligence for studio and streaming use.
 
 **Numbers come from code; words come from the model.** Every stat is computed deterministically. Captions are written from a fact pack, and a validator checks every number in a caption against those facts before it reaches the screen.
@@ -29,7 +31,7 @@ You need Python 3.11+ and Node 20+. No Azure account is required.
 cd backend
 python -m venv .venv && source .venv/bin/activate   # Windows: .venv\Scripts\activate
 pip install -r requirements.txt
-pytest -q                     # 7 tests: simulator, metrics, story, grounding, modes, websocket
+pytest -q                     # unit + functional tests
 uvicorn server:app --port 8000
 
 # frontend (second terminal)
@@ -48,6 +50,16 @@ Copy `.env.example`, fill in your Azure OpenAI endpoint, key and deployment, and
 2. **Version 2**, the model's caption in the viewer's voice and language, follows shortly after.
 
 Version 2 is only sent if every number in it is backed by the fact pack. Otherwise the template caption stays on screen. Model captions show an **AI** badge.
+
+## Tests
+
+| Suite | What it covers | Run |
+| --- | --- | --- |
+| Unit (`backend/tests/unit`) | Metrics, simulator, engine story and totals, caption grounding validator, personalization rules, translation coverage | `pytest tests/unit` |
+| Functional (`backend/tests/functional`) | REST API, WebSocket replay (seek, pause, speed, profile changes, recap), and AI captions with a fake model: grounded ones ship as version 2, invented numbers are rejected | `pytest tests/functional` |
+| Browser (`backend/tests/e2e`) | Playwright against the built app: fan view, Analyst in Arabic (right-to-left), Player focus, full-time recap, Studio approve and "why" | `npm run build` in `frontend`, then `pip install -r requirements-dev.txt`, `playwright install chromium`, `pytest -m e2e` |
+
+GitHub Actions runs all three suites on every push and pull request.
 
 ## Demo script (3 minutes)
 

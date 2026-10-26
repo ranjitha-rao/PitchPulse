@@ -363,7 +363,6 @@ class Simulator:
         self._emit("period_start", HOME.id, self.carrier, start=(52.5, 34.0), qualifiers={"meta": MATCH_META})
         while self.clock < MATCH_END_MS:
             if self.period == 1 and self.clock >= HALF_MS:
-                self.clock = HALF_MS
                 self._emit("period_end", None, None, qualifiers={"score": dict(self.score)})
                 self.period = 2
                 self.team = AWAY.id
