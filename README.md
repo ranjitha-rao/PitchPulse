@@ -91,13 +91,23 @@ GitHub Actions runs all three suites on every push and pull request.
 
 ## Deploy to Azure
 
-The `Dockerfile` builds one container with the API and the web app.
+The `Dockerfile` builds one container with the API and the web app. On every push to `main`, the **Container image** workflow publishes it to `ghcr.io/ranjitha-rao/pitchpulse`, so Azure only has to run it:
 
 ```bash
 az login
-az containerapp up --name pitchpulse --resource-group pitchpulse-rg --location westeurope \
-  --source . --ingress external --target-port 8000 \
-  --env-vars AZURE_OPENAI_ENDPOINT=... AZURE_OPENAI_API_KEY=... AZURE_OPENAI_DEPLOYMENT=...
+az containerapp up --name pitchpulse --resource-group pitchpulse-rg --location swedencentral \
+  --image ghcr.io/ranjitha-rao/pitchpulse:latest --ingress external --target-port 8000
+```
+
+On a paid subscription you can build in Azure instead with `--source .` in place of `--image ...`. Free trial subscriptions can't run those cloud builds (ACR Tasks).
+
+To switch on AI captions, add the Azure OpenAI settings, keeping the key as a secret:
+
+```bash
+az containerapp secret set --name pitchpulse --resource-group pitchpulse-rg --secrets aoai-key=<key>
+az containerapp update --name pitchpulse --resource-group pitchpulse-rg --set-env-vars \
+  AZURE_OPENAI_ENDPOINT=https://<name>.openai.azure.com AZURE_OPENAI_DEPLOYMENT=<deployment> \
+  AZURE_OPENAI_API_KEY=secretref:aoai-key
 ```
 
 The production architecture in the design doc swaps the local stand-ins for managed Azure services:
