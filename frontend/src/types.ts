@@ -26,6 +26,7 @@ export interface Meta {
   langs: Lang[];
   modes: Mode[];
   model_captions: boolean;
+  agents: AgentMeta[];
   event_count: number;
 }
 
@@ -42,6 +43,19 @@ export interface MatchEvent {
   outcome?: string;
   ball_speed_kmh?: number;
   qualifiers?: Record<string, unknown>;
+}
+
+export interface AgentMeta {
+  id: string;
+  name: string;
+  role: string;
+}
+
+export interface TraceStep {
+  agent: string;
+  action: string;
+  detail: string;
+  ok: boolean | null;
 }
 
 export interface Fact {
@@ -69,6 +83,7 @@ export interface Cue {
   dir: Partial<Record<Lang, "rtl" | "ltr">>;
   explain: { facts: Fact[]; drivers: string[]; storyline: string | null };
   source: "template" | "model";
+  trace?: TraceStep[];
   name?: string;
   receivedAt?: number;
 }

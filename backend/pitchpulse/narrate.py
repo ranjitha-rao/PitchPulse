@@ -70,6 +70,11 @@ def allowed_numbers(facts: list[dict]) -> set[float]:
     return allowed
 
 
+def caption_facts(moment: dict) -> list[dict]:
+    """The facts a caption may cite: the moment's fact pack plus its minute."""
+    return moment["facts"] + [{"id": "minute", "value": moment["minute"]}]
+
+
 def validate(text: str, facts: list[dict]) -> tuple[bool, list[float]]:
     """True when every number in the text is backed by a fact in the pack."""
     allowed = allowed_numbers(facts)
@@ -113,7 +118,9 @@ class ModelNarrator:
         except (httpx.HTTPError, KeyError, ValueError):
             return None
 
-    async def caption(self, moment: dict, voice: str, lang: str, focus: str | None = None) -> dict | None:
+    async def draft(self, moment: dict, voice: str, lang: str, focus: str | None = None,
+                    feedback: list[float] | None = None) -> dict | None:
+        """One model draft of a caption, not yet checked. `feedback` lists numbers a fact-checker rejected."""
         if not self.enabled:
             return None
         system = (
@@ -123,6 +130,9 @@ class ModelNarrator:
             f" Write natively in {LANG_NAMES[lang]}, using natural football vocabulary for that language. "
             'Reply as JSON: {"text": "...", "cited": ["fact_id", ...]}.'
         )
+        if feedback:
+            system += (" Your previous draft was rejected by the fact-checker because these numbers are not in "
+                       f"the facts: {', '.join(f'{n:g}' for n in feedback)}. Rewrite it without them.")
         payload = {
             "moment_type": moment["type"], "minute": moment["minute"],
             "teams": {HOME.id: HOME.name, AWAY.id: AWAY.name},
@@ -134,10 +144,15 @@ class ModelNarrator:
         out = await self._chat(system, json.dumps(payload, ensure_ascii=False))
         if not out or not isinstance(out.get("text"), str):
             return None
-        ok, bad = validate(out["text"], moment["facts"] + [{"id": "minute", "value": moment["minute"]}])
-        if not ok:
-            return None
         return {"text": out["text"].strip(), "cited": out.get("cited", [])}
+
+    async def caption(self, moment: dict, voice: str, lang: str, focus: str | None = None) -> dict | None:
+        """A model caption, or None when the model is off, fails, or writes an ungrounded number."""
+        out = await self.draft(moment, voice, lang, focus)
+        if not out:
+            return None
+        ok, _ = validate(out["text"], caption_facts(moment))
+        return out if ok else None
 
     async def recap(self, recap: dict, lang: str) -> str | None:
         if not self.enabled:

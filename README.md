@@ -18,7 +18,26 @@ The match is fictional: Harbourside FC vs Northgate Albion. No real Premier Leag
 | Render | Every insight leaves as an **overlay cue**: timed JSON with slot, priority, template data, text per language and the facts behind it. The React app draws the cues over an animated 2D pitch. | `personalize.py`, `frontend/src` |
 | Personalize | Casual, Analyst and Player focus modes; favourite club; any player to follow; English, Spanish and Arabic (right-to-left). Viewers can switch mode or language mid-match. | `personalize.py`, `i18n.py` |
 
-There's also a **Studio view**, a producer console. A producer can approve or hold each cue, see the "why" (its facts, with drivers highlighted) and inspect the raw cue JSON.
+There's also a **Studio view**, a producer console. A producer can approve or hold each cue, see the "why" (its facts, with drivers highlighted), follow the agent trace and inspect the raw cue JSON.
+
+## The agent newsroom
+
+Between the engine and the screen, four agents work as a newsroom (`backend/pitchpulse/agents.py`):
+
+| Agent | Job | How |
+| --- | --- | --- |
+| Analyst | Reads each moment and writes a brief: what happened, what drove it, which story it belongs to | Calls the engine's tools (match state, rolling metrics) |
+| Producer | Decides, per viewer, what goes on air, in which overlay slot, at what priority | Ranks briefs by the viewer's mode, club and player, and keeps each mode's rate limit |
+| Narrator | Writes the caption from the brief's fact pack | Templates instantly (version 1); Azure OpenAI in the viewer's voice and language (version 2) |
+| Fact-checker | Checks every number in a caption against the fact pack | Approves, or rejects and sends the untraced numbers back to the Narrator for a rewrite (up to 2 drafts); otherwise the template stays on air |
+
+The Narrator and Fact-checker form a generate-and-critique loop. Every step is recorded on the cue as `trace`, and the Studio view shows it next to the facts, so a producer can see why each caption was written and who checked it.
+
+```
+engine moments ──► Analyst ──► Producer ──► Narrator ──► Fact-checker ──► on air
+                   (brief)     (book slot)    ▲   (draft)      │
+                                              └──── reject + feedback
+```
 
 Half-time and full-time **recaps** are built from the storylines, in all three languages.
 
@@ -55,9 +74,9 @@ Version 2 is only sent if every number in it is backed by the fact pack. Otherwi
 
 | Suite | What it covers | Run |
 | --- | --- | --- |
-| Unit (`backend/tests/unit`) | Metrics, simulator, engine story and totals, caption grounding validator, personalization rules, translation coverage | `pytest tests/unit` |
+| Unit (`backend/tests/unit`) | Metrics, simulator, engine story and totals, caption grounding validator, personalization rules, translation coverage, the agent newsroom (briefs, booking, the reject-and-rewrite loop) | `pytest tests/unit` |
 | Functional (`backend/tests/functional`) | REST API, WebSocket replay (seek, pause, speed, profile changes, recap), and AI captions with a fake model: grounded ones ship as version 2, invented numbers are rejected | `pytest tests/functional` |
-| Browser (`backend/tests/e2e`) | Playwright against the built app: fan view, Analyst in Arabic (right-to-left), Player focus, full-time recap, Studio approve and "why" | `npm run build` in `frontend`, then `pip install -r requirements-dev.txt`, `playwright install chromium`, `pytest -m e2e` |
+| Browser (`backend/tests/e2e`) | Playwright against the built app: fan view, Analyst in Arabic (right-to-left), Player focus, full-time recap, Studio approve, "why" and agent trace | `npm run build` in `frontend`, then `pip install -r requirements-dev.txt`, `playwright install chromium`, `pytest -m e2e` |
 
 GitHub Actions runs all three suites on every push and pull request.
 
@@ -68,7 +87,7 @@ GitHub Actions runs all three suites on every push and pull request.
 3. At 64', Okafor's line-breaking pass (difficulty 90/100, 6 opponents bypassed) sets up Haddad.
 4. Switch to **Player focus** on Okafor, then switch the language to **Arabic**, then **Spanish**.
 5. Jump to **87'**. The winner moves win probability from 2% to 99%, and the full-time recap appears.
-6. Open **Studio view**, approve a cue and walk through its "why".
+6. Open **Studio view**, approve a cue and walk through its "why" and the agent trace.
 
 ## Deploy to Azure
 

@@ -76,6 +76,8 @@ def test_websocket_upgrades_cues_to_version_2(socket, monkeypatch):
         v1 = next(m["cue"] for m in seen if m["type"] == "cue" and m["cue"]["cue_id"] == v2["cue"]["cue_id"])
         assert v1["source"] == "template" and v2["cue"]["source"] == "model"
         assert v2["cue"]["text"]["en"] == "Grounded words only."
+        assert v2["cue"]["trace"][-1] == {"agent": "Fact-checker", "action": "approve", "ok": True,
+                                          "detail": "Every number traced to a fact. Version 2 goes on air."}
 
 
 def test_websocket_keeps_template_when_model_invents_numbers(socket, monkeypatch):
@@ -88,3 +90,5 @@ def test_websocket_keeps_template_when_model_invents_numbers(socket, monkeypatch
         _, more = s.until(lambda m: m["type"] == "event" and m["event"]["clock_ms"] >= 65 * 60_000)
         assert fake.calls
         assert all(m["cue"]["version"] == 1 for m in seen + more if m["type"] == "cue")
+        rejected = [m["cue"] for m in seen + more if m["type"] == "cue" and m["cue"]["trace"][-1]["action"] == "fallback"]
+        assert rejected and all(c["source"] == "template" for c in rejected)

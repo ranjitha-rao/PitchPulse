@@ -4,6 +4,7 @@ def test_meta_describes_the_match(client):
     assert all(len(t["players"]) == 11 for t in meta["teams"].values())
     assert meta["langs"] == ["en", "es", "ar"] and meta["modes"] == ["casual", "analyst", "player"]
     assert meta["model_captions"] is False
+    assert [a["id"] for a in meta["agents"]] == ["analyst", "producer", "narrator", "fact_checker"]
     assert meta["event_count"] > 1000
 
 

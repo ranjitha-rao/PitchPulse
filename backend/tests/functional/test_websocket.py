@@ -22,6 +22,7 @@ def test_seek_to_the_end_streams_goals_and_recap(socket):
         assert events and not any(MIN <= e["clock_ms"] < 88 * MIN for e in events)
         goal = next(c for c in cues if c["template"] == "goal")
         assert goal["data"]["score_home"] == 3 and set(goal["text"]) == {"en", "es", "ar"}
+        assert [st["agent"] for st in goal["trace"]] == ["Analyst", "Producer", "Narrator", "Fact-checker"]
         assert "remont" in recap["recap"]["es"]["text"]
         assert recap["timeline"] and recap["facts"]["home_goals"] == 3
         states = [m for m in seen if m["type"] == "state"]
