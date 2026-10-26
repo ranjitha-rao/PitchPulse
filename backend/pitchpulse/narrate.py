@@ -5,6 +5,7 @@ configured, a model caption is generated from the same fact pack and only
 shipped if every number in it can be traced back to a fact.
 """
 
+import asyncio
 import json
 import os
 import re
@@ -92,8 +93,15 @@ VOICE_RULES = {
 }
 
 
+REASONING_MODELS = re.compile(r"^(o\d|gpt-5)", re.I)
+
+
 class ModelNarrator:
-    """Azure OpenAI chat completions. Disabled unless the environment configures it."""
+    """Azure OpenAI chat completions. Disabled unless the environment configures it.
+
+    Works with chat models (gpt-4o, gpt-4o-mini) and reasoning models (gpt-5, gpt-5-mini, o-series),
+    which reject `temperature` and need room to think before they answer.
+    """
 
     def __init__(self):
         self.endpoint = os.getenv("AZURE_OPENAI_ENDPOINT", "").rstrip("/")
@@ -101,26 +109,56 @@ class ModelNarrator:
         self.deployment = os.getenv("AZURE_OPENAI_DEPLOYMENT", "")
         self.api_version = os.getenv("AZURE_OPENAI_API_VERSION", "2024-10-21")
         self.enabled = bool(self.endpoint and self.key and self.deployment)
-        self.client = httpx.AsyncClient(timeout=12) if self.enabled else None
+        # Reasoning models only take the default temperature. Guessed from the deployment name,
+        # and switched off for good if the service rejects it.
+        self.sampling = not REASONING_MODELS.match(self.deployment)
+        self.client = httpx.AsyncClient(timeout=45) if self.enabled else None
 
-    async def _chat(self, system: str, user: str) -> dict | None:
-        url = f"{self.endpoint}/openai/deployments/{self.deployment}/chat/completions?api-version={self.api_version}"
+    def _body(self, system: str, user: str) -> dict:
         body = {
             "messages": [{"role": "system", "content": system}, {"role": "user", "content": user}],
-            "temperature": 0.6,
-            "max_tokens": 300,
+            # Generous, because a reasoning model spends tokens thinking before it writes the caption.
+            "max_completion_tokens": 4000,
             "response_format": {"type": "json_object"},
         }
-        try:
-            r = await self.client.post(url, headers={"api-key": self.key}, json=body)
-            r.raise_for_status()
-            return json.loads(r.json()["choices"][0]["message"]["content"])
-        except (httpx.HTTPError, KeyError, ValueError):
-            return None
+        if self.sampling:
+            body["temperature"] = 0.6
+        return body
+
+    async def _chat(self, system: str, user: str) -> dict:
+        """The model's JSON reply, or {"error": reason} when there is none."""
+        url = f"{self.endpoint}/openai/deployments/{self.deployment}/chat/completions?api-version={self.api_version}"
+        for attempt in range(3):
+            try:
+                r = await self.client.post(url, headers={"api-key": self.key}, json=self._body(system, user))
+            except httpx.TimeoutException:
+                return {"error": "timed out"}
+            except httpx.HTTPError as e:
+                return {"error": f"connection failed ({type(e).__name__})"}
+            if r.status_code == 429 and attempt == 0:
+                await asyncio.sleep(min(float(r.headers.get("retry-after", 2) or 2), 10))
+                continue
+            if r.status_code == 400 and self.sampling and "temperature" in r.text:
+                self.sampling = False
+                continue
+            if r.status_code != 200:
+                return {"error": _http_reason(r)}
+            try:
+                choice = r.json()["choices"][0]
+                content = choice["message"].get("content")
+                if not content:
+                    return {"error": f"empty reply (finish_reason: {choice.get('finish_reason')})"}
+                return json.loads(content)
+            except (KeyError, IndexError, ValueError):
+                return {"error": "reply was not JSON"}
+        return {"error": "rate limited (429)"}
 
     async def draft(self, moment: dict, voice: str, lang: str, focus: str | None = None,
                     feedback: list[float] | None = None) -> dict | None:
-        """One model draft of a caption, not yet checked. `feedback` lists numbers a fact-checker rejected."""
+        """One model draft of a caption, not yet checked: {"text", "cited"}, or {"error"} when the model failed.
+
+        `feedback` lists numbers a fact-checker rejected in the previous draft.
+        """
         if not self.enabled:
             return None
         system = (
@@ -143,13 +181,13 @@ class ModelNarrator:
             payload["viewer_follows_player"] = PLAYERS[focus].name
         out = await self._chat(system, json.dumps(payload, ensure_ascii=False))
         if not out or not isinstance(out.get("text"), str):
-            return None
+            return {"error": (out or {}).get("error") or "reply had no caption text"}
         return {"text": out["text"].strip(), "cited": out.get("cited", [])}
 
     async def caption(self, moment: dict, voice: str, lang: str, focus: str | None = None) -> dict | None:
         """A model caption, or None when the model is off, fails, or writes an ungrounded number."""
         out = await self.draft(moment, voice, lang, focus)
-        if not out:
+        if not out or "text" not in out:
             return None
         ok, _ = validate(out["text"], caption_facts(moment))
         return out if ok else None
@@ -168,6 +206,16 @@ class ModelNarrator:
         facts = [{"id": k, "value": v} for k, v in _flatten(recap["facts"]).items()]
         ok, _ = validate(out["text"], facts)
         return out["text"].strip() if ok else None
+
+
+def _http_reason(r: httpx.Response) -> str:
+    try:
+        msg = r.json()["error"]["message"]
+    except (KeyError, TypeError, ValueError):
+        msg = r.text
+    hint = {401: "key refused", 403: "access refused", 404: "deployment or endpoint not found",
+            429: "rate limited"}.get(r.status_code, "request rejected")
+    return f"{hint} ({r.status_code}): {msg[:160]}"
 
 
 def _flatten(d: dict, prefix: str = "") -> dict:
