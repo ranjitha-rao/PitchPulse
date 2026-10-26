@@ -102,6 +102,16 @@ def test_studio_view_approves_a_cue_and_explains_it(page):
     assert page.locator(".facts tr.driver").count() >= 1
 
 
+def test_studio_shows_the_agent_newsroom_and_trace(page):
+    seek(page, 60)
+    page.locator(".feed li").first.wait_for(timeout=30000)
+    page.get_by_role("button", name="Studio view").click()
+    assert page.locator(".agents .agent").count() == 4
+    page.get_by_text("Agent trace").wait_for()
+    agents = page.locator(".trace li b").all_inner_texts()
+    assert agents == ["Analyst", "Producer", "Narrator", "Fact-checker"]
+
+
 def test_studio_offers_webvtt_download(page):
     page.get_by_role("button", name="Studio view").click()
     link = page.get_by_role("link", name="Download WebVTT")

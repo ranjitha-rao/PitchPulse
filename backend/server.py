@@ -12,10 +12,11 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, PlainTextResponse
 from fastapi.staticfiles import StaticFiles
 
+from pitchpulse.agents import AGENTS, Newsroom
 from pitchpulse.engine import MIN, MatchEngine
-from pitchpulse.i18n import LANGS, UI_MODES, voice
+from pitchpulse.i18n import LANGS, UI_MODES
 from pitchpulse.narrate import ModelNarrator, recap_facts, render_recap
-from pitchpulse.personalize import Profile, build_cue, player_card_cue, relevance
+from pitchpulse.personalize import Profile, player_card_cue
 from pitchpulse.roster import MATCH_META, TEAMS
 from pitchpulse.simulator import HALF_MS, generate_match
 from pitchpulse.webvtt import to_webvtt
@@ -50,6 +51,7 @@ def meta():
         "langs": LANGS,
         "modes": UI_MODES,
         "model_captions": narrator.enabled,
+        "agents": AGENTS,
         "event_count": len(EVENTS),
     }
 
@@ -91,6 +93,7 @@ class Session:
         self.seek_to: int | None = None
         self.restart = False
         self.lock = asyncio.Lock()
+        self.newsroom = Newsroom(narrator)
 
     async def send(self, msg: dict) -> None:
         async with self.lock:
@@ -106,14 +109,11 @@ class Session:
                          "profile": {"mode": p.mode, "club": p.club, "player": p.player, "lang": p.lang},
                          "model_captions": narrator.enabled})
 
-    async def upgrade(self, cue: dict, moment: dict) -> None:
-        """Send version 2 of a cue with a grounded model caption, if the model is configured."""
-        lang = self.profile.lang
-        out = await narrator.caption(moment, voice(self.profile.mode), lang, self.profile.player)
+    async def upgrade(self, cue: dict, brief) -> None:
+        """Ask the newsroom for a model-written version 2 of a cue, and send it (or the rejection trace)."""
+        out = await self.newsroom.rewrite(cue, brief, self.profile)
         if out:
-            cue = {**cue, "version": 2, "source": "model",
-                   "text": {**cue["text"], lang: out["text"]}, "cited": out["cited"]}
-            await self.send({"type": "cue", "cue": cue})
+            await self.send({"type": "cue", "cue": out})
 
 
 async def reader(s: Session) -> None:
@@ -168,14 +168,10 @@ async def player(s: Session) -> None:
                 last_state_minute = minute
                 await s.send({"type": "state", "state": engine.state(),
                               "point": engine.timeline[-1] if engine.timeline else None})
-            ranked = [(relevance(mo, s.profile), mo) for mo in moments]
-            for score, mo in sorted((r for r in ranked if r[0] is not None), key=lambda r: -r[0])[:2]:
-                cue = build_cue(mo, s.profile, s.langs())
-                if mo.type not in ("goal", "card"):
-                    s.profile.last_cue_ms = mo.clock_ms
+            for cue, brief in s.newsroom.on_air(moments, engine, s.profile, s.langs()):
                 await s.send({"type": "cue", "cue": cue})
-                if narrator.enabled:
-                    asyncio.create_task(s.upgrade(cue, mo.as_dict()))
+                if s.newsroom.model.enabled:
+                    asyncio.create_task(s.upgrade(cue, brief))
             if s.profile.mode == "player" and s.profile.player and ev["clock_ms"] >= next_card_ms:
                 next_card_ms += 15 * MIN
                 await s.send({"type": "cue", "cue": player_card_cue(engine, s.profile, s.langs())})

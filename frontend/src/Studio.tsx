@@ -15,6 +15,14 @@ export function Studio({ meta, cues, lang, profile }: { meta: Meta; cues: Cue[];
 
   return (
     <main className="studio">
+      <section className="agents">
+        {meta.agents.map((a, i) => (
+          <div key={a.id} className="agent">
+            <b>{i + 1}. {a.name}</b>
+            <span>{a.role}</span>
+          </div>
+        ))}
+      </section>
       <section className="queue">
         <h3>
           Cue queue <small>{cues.length} cues · newest first</small>
@@ -70,6 +78,19 @@ export function Studio({ meta, cues, lang, profile }: { meta: Meta; cues: Cue[];
               checked against this list before it goes to air.
               {cue.explain.storyline && <> Storyline: <b>{cue.explain.storyline}</b>.</>}
             </p>
+            {cue.trace && (
+              <>
+                <h3>Agent trace <small>how the newsroom produced this cue</small></h3>
+                <ol className="trace">
+                  {cue.trace.map((t, i) => (
+                    <li key={i} className={t.ok === false ? "bad" : t.ok ? "good" : ""}>
+                      <b>{t.agent}</b> <span className="act">{t.action}</span>
+                      <p>{t.detail}</p>
+                    </li>
+                  ))}
+                </ol>
+              </>
+            )}
             <details>
               <summary>Overlay cue JSON (renderer contract)</summary>
               <pre>{JSON.stringify({ ...cue, receivedAt: undefined }, null, 2)}</pre>
