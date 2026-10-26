@@ -1,10 +1,13 @@
 import { useState } from "react";
 import { cueText } from "./Overlays";
-import type { Cue, Lang, Meta } from "./types";
+import type { Cue, Lang, Meta, Profile } from "./types";
 
 type Decision = "approved" | "held";
 
-export function Studio({ meta, cues, lang }: { meta: Meta; cues: Cue[]; lang: Lang }) {
+export function Studio({ meta, cues, lang, profile }: { meta: Meta; cues: Cue[]; lang: Lang; profile: Profile }) {
+  const vtt = `/api/captions.vtt?${new URLSearchParams({
+    mode: profile.mode, lang, club: profile.club ?? "", player_id: profile.player ?? "",
+  })}`;
   const [decisions, setDecisions] = useState<Record<string, Decision>>({});
   const [selected, setSelected] = useState<string | null>(null);
   const cue = cues.find((c) => c.cue_id === selected) ?? cues[0];
@@ -13,7 +16,10 @@ export function Studio({ meta, cues, lang }: { meta: Meta; cues: Cue[]; lang: La
   return (
     <main className="studio">
       <section className="queue">
-        <h3>Cue queue <small>{cues.length} cues · newest first</small></h3>
+        <h3>
+          Cue queue <small>{cues.length} cues · newest first</small>
+          <a className="vtt" href={vtt} download>Download WebVTT ({profile.mode}, {lang})</a>
+        </h3>
         <table>
           <thead>
             <tr><th>Min</th><th>Slot</th><th>Template</th><th>Caption</th><th>Pri</th><th>Src</th><th>Producer</th></tr>

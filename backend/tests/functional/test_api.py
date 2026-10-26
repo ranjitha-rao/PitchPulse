@@ -24,3 +24,12 @@ def test_recap_in_each_language(client):
         r = client.get("/api/recap", params={"lang": lang}).json()
         assert word in r["text"] and r["model_text"] is None
         assert r["facts"]["home_goals"] == 3
+
+
+def test_webvtt_captions_endpoint(client):
+    r = client.get("/api/captions.vtt", params={"mode": "player", "player_id": "hfc_08", "lang": "ar"})
+    assert r.status_code == 200
+    assert r.headers["content-type"].startswith("text/vtt")
+    assert "pitchpulse-player-ar.vtt" in r.headers["content-disposition"]
+    assert r.text.startswith("WEBVTT\n")
+    assert "Daniel Okafor" in r.text and "هدف!" in r.text

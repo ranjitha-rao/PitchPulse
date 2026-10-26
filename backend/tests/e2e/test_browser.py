@@ -100,3 +100,11 @@ def test_studio_view_approves_a_cue_and_explains_it(page):
     assert "approved" in row.get_attribute("class")
     page.get_by_text("Why this cue?").wait_for()
     assert page.locator(".facts tr.driver").count() >= 1
+
+
+def test_studio_offers_webvtt_download(page):
+    page.get_by_role("button", name="Studio view").click()
+    link = page.get_by_role("link", name="Download WebVTT")
+    assert "/api/captions.vtt?mode=casual&lang=en" in link.get_attribute("href")
+    body = page.request.get(page.url.rstrip("/") + link.get_attribute("href")).text()
+    assert body.startswith("WEBVTT")
