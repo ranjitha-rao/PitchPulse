@@ -1,0 +1,35 @@
+name: Container image
+
+# Builds the app image and publishes it to GitHub Container Registry, so Azure Container Apps
+# can run it without building in Azure (ACR Tasks are not available on free trial subscriptions).
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  image:
+    name: Build and push image
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/login-action@v3
+        if: github.event_name != 'pull_request'
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - uses: docker/build-push-action@v6
+        with:
+          context: .
+          push: ${{ github.event_name != 'pull_request' }}  # pull requests only check that the image builds
+          tags: |
+            ghcr.io/ranjitha-rao/pitchpulse:latest
+            ghcr.io/ranjitha-rao/pitchpulse:${{ github.sha }}
+          labels: |
+            org.opencontainers.image.source=https://github.com/${{ github.repository }}
+            org.opencontainers.image.description=PitchPulse synthetic match insights engine
