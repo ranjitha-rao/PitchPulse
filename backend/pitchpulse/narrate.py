@@ -178,7 +178,8 @@ def recap_facts(engine, half: bool = False) -> dict:
     cb = engine.storylines.get("comeback")
     if cb and cb["status"] == "complete" and not half:
         late = sum(1 for mo in engine.moments if mo.type == "goal" and mo.team_id == cb["team_id"] and mo.minute > 60)
-        facts["comeback"] = {"team": TEAMS[cb["team_id"]].name, "from": cb["from"], "goals_after_60": late}
+        facts["comeback"] = {"team": TEAMS[cb["team_id"]].name, "from": cb["from"], "after_minute": 60,
+                             "goals_after": late}
     press = engine.storylines.get("press")
     if press and press.get("status") == "faded":
         facts["press"] = {"team": TEAMS[press["team_id"]].name, "peak": press["peak"], "now": press["faded_to"],
@@ -214,7 +215,7 @@ def render_recap(facts: dict, lang: str, half: bool = False) -> dict:
             lines.append(R["lead"].format(team=lead, scorers=", ".join(facts["scorers"])))
     if "comeback" in facts:
         lines.append(R["comeback"].format(team=facts["comeback"]["team"], from_score=facts["comeback"]["from"],
-                                          n=facts["comeback"]["goals_after_60"]))
+                                          n=facts["comeback"]["goals_after"], after=facts["comeback"]["after_minute"]))
     if "press" in facts:
         p = facts["press"]
         lines.append(R["press"].format(team=p["team"], peak=p["peak"], now=p["now"], faded_at=p["faded_at"]))

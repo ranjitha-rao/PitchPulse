@@ -190,7 +190,7 @@ RECAP = {
     "en": {
         "title_ft": "Full-time recap", "title_ht": "Half-time recap",
         "score": "{home} {hg}-{ag} {away}.",
-        "comeback": "{team} came back from {from_score} down with {n} goals after the hour.",
+        "comeback": "{team} came back from {from_score} down with {n} goals after minute {after}.",
         "press": "The story turned on {team}'s press: it peaked at {peak} per 10 opposition passes, then faded to {now} by minute {faded_at}.",
         "wp": "At its lowest, {team}'s win probability was {low}% in minute {low_min}.",
         "xg": "Expected goals: {home} {hxg}, {away} {axg}.",
@@ -202,7 +202,7 @@ RECAP = {
     "es": {
         "title_ft": "Resumen final", "title_ht": "Resumen del descanso",
         "score": "{home} {hg}-{ag} {away}.",
-        "comeback": "{team} remontó un {from_score} con {n} goles después del minuto 60.",
+        "comeback": "{team} remontó un {from_score} con {n} goles después del minuto {after}.",
         "press": "La clave fue la presión de {team}: llegó a {peak} por cada 10 pases rivales y cayó a {now} hacia el minuto {faded_at}.",
         "wp": "En su peor momento, la probabilidad de victoria de {team} fue del {low}% en el minuto {low_min}.",
         "xg": "Goles esperados: {home} {hxg}, {away} {axg}.",
@@ -214,7 +214,7 @@ RECAP = {
     "ar": {
         "title_ft": "ملخص نهاية المباراة", "title_ht": "ملخص الشوط الأول",
         "score": "{home} {hg}-{ag} {away}.",
-        "comeback": "{team} عاد من تأخر {from_score} وسجل {n} أهداف بعد الدقيقة 60.",
+        "comeback": "{team} عاد من تأخر {from_score} وسجل {n} أهداف بعد الدقيقة {after}.",
         "press": "تحولت المباراة مع ضغط {team}: بلغ ذروته عند {peak} لكل 10 تمريرات للمنافس ثم تراجع إلى {now} بحلول الدقيقة {faded_at}.",
         "wp": "في أسوأ لحظاته، كانت فرصة فوز {team} {low}% في الدقيقة {low_min}.",
         "xg": "الأهداف المتوقعة: {home} {hxg}، {away} {axg}.",
