@@ -68,6 +68,8 @@ Copy `.env.example`, fill in your Azure OpenAI endpoint, key and deployment, and
 1. **Version 1**, a template caption, arrives instantly.
 2. **Version 2**, the model's caption in the viewer's voice and language, follows shortly after.
 
+Both chat models (such as gpt-4o-mini) and reasoning models (such as gpt-5-mini) work. If a model call fails, the agent trace in Studio view shows why, for example a rate limit or a missing deployment.
+
 Version 2 is only sent if every number in it is backed by the fact pack. Otherwise the template caption stays on screen. Model captions show an **AI** badge.
 
 ## Tests

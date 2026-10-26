@@ -146,8 +146,9 @@ class Newsroom:
         feedback = None
         for attempt in range(1, self.MAX_DRAFTS + 1):
             out = await self.narrator.draft(b, profile, feedback)
-            if not out:
-                trace.append(step("Narrator", f"draft {attempt}", "Azure OpenAI gave no usable draft.", False))
+            if not out or "text" not in out:
+                reason = (out or {}).get("error", "no reply")
+                trace.append(step("Narrator", f"draft {attempt}", f"Azure OpenAI gave no usable draft: {reason}.", False))
                 break
             trace.append(step("Narrator", f"draft {attempt}", f"Azure OpenAI draft: “{out['text']}”"))
             ok, bad = self.checker.check(out["text"], b)
